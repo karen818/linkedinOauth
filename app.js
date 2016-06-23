@@ -6,13 +6,14 @@ var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var passport = require('passport');
 var cookieSession = require('cookie-session');
-var LinkedInStrategy = require('passport-linkedin').Strategy;
+var LinkedInStrategy = require('passport-linkedin-oauth2').Strategy;
+var knex = require('./db/knex');
 
 require('dotenv').load();
+require('locus');
 
 //get auth.js module
 var auth = require('./routes/auth');
-
 var routes = require('./routes/index');
 var users = require('./routes/users');
 
@@ -40,6 +41,8 @@ app.use(passport.session());
 
 app.use('/', routes);
 app.use('/users', users);
+//mount auth.js middleware
+app.use('/auth', auth);
 
 passport.serializeUser(function(user, done) {
   //later this will be where you selectively send to the browser an identifier for your user, like their primary key from the database, or their ID from linkedin
@@ -52,24 +55,20 @@ passport.deserializeUser(function(obj, done) {
 });
 
 passport.use(new LinkedInStrategy({
-    consumerKey: process.env.LINKEDIN_API_KEY,
-    consumerSecret: process.env.LINKEDIN_SECRET_KEY,
-    callbackURL: "http://localhost:3000/auth/linkedin/callback",
+    clientID: process.env.LINKEDIN_API_KEY,
+    clientSecret: process.env.LINKEDIN_SECRET_KEY,
+    callbackURL: "http://127.0.0.1:3000/auth/linkedin/callback",
     scope: ['r_emailaddress', 'r_basicprofile'],
+    state: true
   },
   function(token, tokenSecret, profile, done) {
 
-      // To keep the example simple, the user's LinkedIn profile is returned to
-      // represent the logged-in user.  In a typical application, you would want
-      // to associate the LinkedIn account with a user record in your database,
-      // and return that user instead (so perform a knex query here later.)
-      process.nextTick(function() {
-    done(null, profile);
-  });
+    // To keep the example simple, the user's LinkedIn profile is returned to
+    // represent the logged-in user.  In a typical application, you would want
+    // to associate the LinkedIn account with a user record in your database,
+    // and return that user instead (so perform a knex query here later.)
+    return done(err, profile);
 }));
-
-//mount auth.js middleware
-app.use('/auth', auth);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
